@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { collection, addDoc } from "firebase/firestore";
-import { db, auth } from "../firebase";
-import { planesData } from "../assets/planes.json";
-import { TextField, Button, Box, Typography, MenuItem, Select, InputLabel, Alert } from "@mui/material";
+import { useState } from 'react';
+import { collection, addDoc } from 'firebase/firestore';
+import { db, auth } from '../firebase';
+import { airplanes } from '../assets/planes.js'; // Usa 'airplanes' desde planes.js
+import { TextField, Button, Box, Typography, MenuItem, Select, InputLabel, Alert } from '@mui/material';
 
 function RouteCalculator() {
     const [demand, setDemand] = useState({ economy: 0, business: 0, first: 0, cargo: 0 });
@@ -11,33 +11,33 @@ function RouteCalculator() {
     const [error, setError] = useState('');
 
     const handleCalculate = () => {
-        const plane = planesData.find((p) => p.name === route.plane);
-
+        const plane = airplanes.find((p) => `${p.brand} ${p.model}` === route.plane); // Usa 'airplanes'
         if (!plane) {
-            setError('Please select a valid plane.');
+            setError('Please select a plane');
             return;
         }
 
         const { economy, business, first, cargo } = demand;
         const planeCapacity = {
-            economy: plane.maxPassengers,
-            business: Math.floor(plane.maxPassengers / 2),
-            first: Math.floor(plane.maxPassengers / 4),
-            cargo: plane.cargoCapacity || 0,
+            economy: plane.pax,
+            business: Math.floor(plane.pax / 2),
+            first: Math.floor(plane.pax / 4),
+            cargo: 0, // No hay datos de carga en el JSON
         };
 
         const tripsNeeded = Math.max(
             Math.ceil(economy / planeCapacity.economy),
             Math.ceil(business / planeCapacity.business),
             Math.ceil(first / planeCapacity.first),
-            Math.ceil(cargo / planeCapacity.cargo)
+            Math.ceil(cargo / planeCapacity.cargo || 1) // Evita división por cero
         );
 
         setResult({
-            plane: plane.name,
+            plane: `${plane.brand} ${plane.model}`,
             trips: tripsNeeded,
             totalPassengers: economy + business * 2 + first * 4,
             totalCargo: cargo,
+            img: plane.img,
         });
         setError('');
     };
@@ -52,9 +52,11 @@ function RouteCalculator() {
                 origin: route.origin,
                 destination: route.destination,
                 plane: route.plane,
+                demand: demand,
+                planePhotoURL: getPlaneImage(route.plane),
                 createdAt: new Date(),
             });
-            localStorage.setItem('lastRoute', JSON.stringify(route));
+            localStorage.setItem('lastRoute', JSON.stringify({ ...route, demand }));
             setRoute({ origin: '', destination: '', plane: '' });
             setDemand({ economy: 0, business: 0, first: 0, cargo: 0 });
             setResult(null);
@@ -62,6 +64,11 @@ function RouteCalculator() {
         } catch (err) {
             setError(err.message);
         }
+    };
+
+    const getPlaneImage = (planeName) => {
+        const plane = airplanes.find((p) => `${p.brand} ${p.model}` === planeName); // Usa 'airplanes'
+        return plane && plane.img ? `/images/${plane.img}` : '';
     };
 
     return (
@@ -93,9 +100,9 @@ function RouteCalculator() {
                 sx={{ mb: 2 }}
             >
                 <MenuItem value="">Select a plane</MenuItem>
-                {planesData.map((plane) => (
-                    <MenuItem key={plane.name} value={plane.name}>
-                        {plane.name} ({plane.maxPassengers} seats, {plane.cargoCapacity} cargo)
+                {airplanes.map((plane) => ( // Usa 'airplanes'
+                    <MenuItem key={`${plane.brand} ${plane.model}`} value={`${plane.brand} ${plane.model}`}>
+                        {plane.brand} {plane.model} ({plane.pax} seats)
                     </MenuItem>
                 ))}
             </Select>
@@ -140,6 +147,7 @@ function RouteCalculator() {
                     <Typography><strong>Trips Needed:</strong> {result.trips}</Typography>
                     <Typography><strong>Total Passengers:</strong> {result.totalPassengers}</Typography>
                     <Typography><strong>Total Cargo:</strong> {result.totalCargo}</Typography>
+                    {result.img && <img src={`/images/${result.img}`} alt={result.plane} style={{ maxWidth: '100%', height: 'auto' }} />}
                     <Button variant="contained" onClick={handleSaveRoute} fullWidth sx={{ mt: 2 }}>
                         Save Route
                     </Button>

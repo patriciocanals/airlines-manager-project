@@ -1,5 +1,5 @@
 
-const airplanes = [
+export const airplanes = [
     {
         "brand":"Aerospatiale",
         "model":"ATR 42-500",
