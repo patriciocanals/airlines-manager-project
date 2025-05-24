@@ -1,28 +1,47 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { useAuthState } from 'react-firebase-hooks/auth';
+import { useEffect } from 'react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { auth } from './firebase';
-import Home from './components/Home.jsx';
-import Login from './components/Login.jsx';
-import RouteCalculator from './components/RouteCalculator.jsx';
-import RouteManager from './components/RouteManager.jsx';
-import { Container } from '@mui/material';
+import RouteCalculator from './components/RouteCalculator';
+import RouteManager from './components/RouteManager';
+import Login from './components/Login';
+import Home from './components/Home';
+import Header from './components/Header';
+import Customization from './components/Customization';
+import RouteDetails from './components/RouteDetails';
+import { Box } from '@mui/material';
 
 function App() {
-  const [user, loading] = useAuthState(auth);
+  const navigate = useNavigate();
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        if (window.location.pathname === '/login') {
+          navigate('/', { replace: true });
+        }
+      } else {
+        if (!['/login', '/signup'].includes(window.location.pathname)) {
+          navigate('/login', { replace: true });
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [navigate]);
 
   return (
-    <Container maxWidth="lg">
-      <Routes>
-        <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
-        <Route path="/" element={user ? <Home /> : <Navigate to="/login" />} />
-        <Route path="/calculator" element={user ? <RouteCalculator /> : <Navigate to="/login" />} />
-        <Route path="/routes" element={user ? <RouteManager /> : <Navigate to="/login" />} />
-      </Routes>
-    </Container>
+    <>
+      <Header />
+      <Box sx={{ mt: 2 }}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/calculator" element={<RouteCalculator />} />
+          <Route path="/routes" element={<RouteManager />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/customization" element={<Customization />} />
+          <Route path="/route/:id" element={<RouteDetails />} />
+        </Routes>
+      </Box>
+    </>
   );
 }
 
